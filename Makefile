@@ -1,5 +1,6 @@
 NPM_PACKAGE := $(shell node -e 'process.stdout.write(require("./package.json").name)')
 NPM_VERSION := $(shell node -e 'process.stdout.write(require("./package.json").version)')
+GIT_HASH := $(shell git rev-parse HEAD)
 
 TMP_PATH    := /tmp/${NPM_PACKAGE}-$(shell date +%s)
 
@@ -7,7 +8,7 @@ REMOTE_NAME ?= origin
 REMOTE_REPO ?= $(shell git config --get remote.${REMOTE_NAME}.url)
 
 CURR_HEAD   := $(firstword $(shell git show-ref --hash HEAD | cut -b -6) master)
-GITHUB_PROJ := https://github.com/nodeca/${NPM_PACKAGE}
+GITHUB_PROJ := https://github.com/minj/${NPM_PACKAGE}
 
 
 help:
@@ -83,12 +84,12 @@ browserify:
 	rm -rf ./dist
 	mkdir dist
 	# Browserify
-	( echo -n "/* ${NPM_PACKAGE} ${NPM_VERSION} ${GITHUB_PROJ} */" ; \
+	( echo -ne "/* ${NPM_PACKAGE} ${GIT_HASH} ${GITHUB_PROJ}\n * check package-lock.json\n * $$ make browserify\n */" ; \
 		./node_modules/.bin/browserify -r ./ -s jsyaml \
 		) > dist/js-yaml.js
 	# Minify
 	./node_modules/.bin/uglifyjs dist/js-yaml.js -c -m \
-		--preamble "/* ${NPM_PACKAGE} ${NPM_VERSION} ${GITHUB_PROJ} */" \
+		--preamble "/* ${NPM_PACKAGE} ${GIT_HASH} ${GITHUB_PROJ}\n * check package-lock.json\n * $$ make browserify\n */" \
 		> dist/js-yaml.min.js
 
 
