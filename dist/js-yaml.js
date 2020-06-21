@@ -1,4 +1,7 @@
-/* js-yaml 3.14.0 https://github.com/nodeca/js-yaml */(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.jsyaml = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+/* js-yaml e28a4bea9f7dd6fd54ddf742d3ae23bde9400fb2 https://github.com/minj/js-yaml
+ * check package-lock.json
+ * $ make browserify
+ */(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.jsyaml = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 'use strict';
 
 
@@ -2874,11 +2877,10 @@ module.exports = Schema.DEFAULT = new Schema({
   explicit: [
     require('../type/js/undefined'),
     require('../type/js/regexp'),
-    require('../type/js/function')
   ]
 });
 
-},{"../schema":7,"../type/js/function":18,"../type/js/regexp":19,"../type/js/undefined":20,"./default_safe":10}],10:[function(require,module,exports){
+},{"../schema":7,"../type/js/regexp":18,"../type/js/undefined":19,"./default_safe":10}],10:[function(require,module,exports){
 // JS-YAML's default schema for `safeLoad` function.
 // It is not described in the YAML specification.
 //
@@ -2908,7 +2910,7 @@ module.exports = new Schema({
   ]
 });
 
-},{"../schema":7,"../type/binary":14,"../type/merge":22,"../type/omap":24,"../type/pairs":25,"../type/set":27,"../type/timestamp":29,"./core":8}],11:[function(require,module,exports){
+},{"../schema":7,"../type/binary":14,"../type/merge":21,"../type/omap":23,"../type/pairs":24,"../type/set":26,"../type/timestamp":28,"./core":8}],11:[function(require,module,exports){
 // Standard YAML's Failsafe schema.
 // http://www.yaml.org/spec/1.2/spec.html#id2802346
 
@@ -2927,7 +2929,7 @@ module.exports = new Schema({
   ]
 });
 
-},{"../schema":7,"../type/map":21,"../type/seq":26,"../type/str":28}],12:[function(require,module,exports){
+},{"../schema":7,"../type/map":20,"../type/seq":25,"../type/str":27}],12:[function(require,module,exports){
 // Standard YAML's JSON schema.
 // http://www.yaml.org/spec/1.2/spec.html#id2803231
 //
@@ -2954,7 +2956,7 @@ module.exports = new Schema({
   ]
 });
 
-},{"../schema":7,"../type/bool":15,"../type/float":16,"../type/int":17,"../type/null":23,"./failsafe":11}],13:[function(require,module,exports){
+},{"../schema":7,"../type/bool":15,"../type/float":16,"../type/int":17,"../type/null":22,"./failsafe":11}],13:[function(require,module,exports){
 'use strict';
 
 var YAMLException = require('./exception');
@@ -3490,101 +3492,6 @@ module.exports = new Type('tag:yaml.org,2002:int', {
 },{"../common":2,"../type":13}],18:[function(require,module,exports){
 'use strict';
 
-var esprima;
-
-// Browserified version does not have esprima
-//
-// 1. For node.js just require module as deps
-// 2. For browser try to require mudule via external AMD system.
-//    If not found - try to fallback to window.esprima. If not
-//    found too - then fail to parse.
-//
-try {
-  // workaround to exclude package from browserify list.
-  var _require = require;
-  esprima = _require('esprima');
-} catch (_) {
-  /* eslint-disable no-redeclare */
-  /* global window */
-  if (typeof window !== 'undefined') esprima = window.esprima;
-}
-
-var Type = require('../../type');
-
-function resolveJavascriptFunction(data) {
-  if (data === null) return false;
-
-  try {
-    var source = '(' + data + ')',
-        ast    = esprima.parse(source, { range: true });
-
-    if (ast.type                    !== 'Program'             ||
-        ast.body.length             !== 1                     ||
-        ast.body[0].type            !== 'ExpressionStatement' ||
-        (ast.body[0].expression.type !== 'ArrowFunctionExpression' &&
-          ast.body[0].expression.type !== 'FunctionExpression')) {
-      return false;
-    }
-
-    return true;
-  } catch (err) {
-    return false;
-  }
-}
-
-function constructJavascriptFunction(data) {
-  /*jslint evil:true*/
-
-  var source = '(' + data + ')',
-      ast    = esprima.parse(source, { range: true }),
-      params = [],
-      body;
-
-  if (ast.type                    !== 'Program'             ||
-      ast.body.length             !== 1                     ||
-      ast.body[0].type            !== 'ExpressionStatement' ||
-      (ast.body[0].expression.type !== 'ArrowFunctionExpression' &&
-        ast.body[0].expression.type !== 'FunctionExpression')) {
-    throw new Error('Failed to resolve function');
-  }
-
-  ast.body[0].expression.params.forEach(function (param) {
-    params.push(param.name);
-  });
-
-  body = ast.body[0].expression.body.range;
-
-  // Esprima's ranges include the first '{' and the last '}' characters on
-  // function expressions. So cut them out.
-  if (ast.body[0].expression.body.type === 'BlockStatement') {
-    /*eslint-disable no-new-func*/
-    return new Function(params, source.slice(body[0] + 1, body[1] - 1));
-  }
-  // ES6 arrow functions can omit the BlockStatement. In that case, just return
-  // the body.
-  /*eslint-disable no-new-func*/
-  return new Function(params, 'return ' + source.slice(body[0], body[1]));
-}
-
-function representJavascriptFunction(object /*, style*/) {
-  return object.toString();
-}
-
-function isFunction(object) {
-  return Object.prototype.toString.call(object) === '[object Function]';
-}
-
-module.exports = new Type('tag:yaml.org,2002:js/function', {
-  kind: 'scalar',
-  resolve: resolveJavascriptFunction,
-  construct: constructJavascriptFunction,
-  predicate: isFunction,
-  represent: representJavascriptFunction
-});
-
-},{"../../type":13}],19:[function(require,module,exports){
-'use strict';
-
 var Type = require('../../type');
 
 function resolveJavascriptRegExp(data) {
@@ -3644,7 +3551,7 @@ module.exports = new Type('tag:yaml.org,2002:js/regexp', {
   represent: representJavascriptRegExp
 });
 
-},{"../../type":13}],20:[function(require,module,exports){
+},{"../../type":13}],19:[function(require,module,exports){
 'use strict';
 
 var Type = require('../../type');
@@ -3674,7 +3581,7 @@ module.exports = new Type('tag:yaml.org,2002:js/undefined', {
   represent: representJavascriptUndefined
 });
 
-},{"../../type":13}],21:[function(require,module,exports){
+},{"../../type":13}],20:[function(require,module,exports){
 'use strict';
 
 var Type = require('../type');
@@ -3684,7 +3591,7 @@ module.exports = new Type('tag:yaml.org,2002:map', {
   construct: function (data) { return data !== null ? data : {}; }
 });
 
-},{"../type":13}],22:[function(require,module,exports){
+},{"../type":13}],21:[function(require,module,exports){
 'use strict';
 
 var Type = require('../type');
@@ -3698,7 +3605,7 @@ module.exports = new Type('tag:yaml.org,2002:merge', {
   resolve: resolveYamlMerge
 });
 
-},{"../type":13}],23:[function(require,module,exports){
+},{"../type":13}],22:[function(require,module,exports){
 'use strict';
 
 var Type = require('../type');
@@ -3734,7 +3641,7 @@ module.exports = new Type('tag:yaml.org,2002:null', {
   defaultStyle: 'lowercase'
 });
 
-},{"../type":13}],24:[function(require,module,exports){
+},{"../type":13}],23:[function(require,module,exports){
 'use strict';
 
 var Type = require('../type');
@@ -3780,7 +3687,7 @@ module.exports = new Type('tag:yaml.org,2002:omap', {
   construct: constructYamlOmap
 });
 
-},{"../type":13}],25:[function(require,module,exports){
+},{"../type":13}],24:[function(require,module,exports){
 'use strict';
 
 var Type = require('../type');
@@ -3835,7 +3742,7 @@ module.exports = new Type('tag:yaml.org,2002:pairs', {
   construct: constructYamlPairs
 });
 
-},{"../type":13}],26:[function(require,module,exports){
+},{"../type":13}],25:[function(require,module,exports){
 'use strict';
 
 var Type = require('../type');
@@ -3845,7 +3752,7 @@ module.exports = new Type('tag:yaml.org,2002:seq', {
   construct: function (data) { return data !== null ? data : []; }
 });
 
-},{"../type":13}],27:[function(require,module,exports){
+},{"../type":13}],26:[function(require,module,exports){
 'use strict';
 
 var Type = require('../type');
@@ -3876,7 +3783,7 @@ module.exports = new Type('tag:yaml.org,2002:set', {
   construct: constructYamlSet
 });
 
-},{"../type":13}],28:[function(require,module,exports){
+},{"../type":13}],27:[function(require,module,exports){
 'use strict';
 
 var Type = require('../type');
@@ -3886,7 +3793,7 @@ module.exports = new Type('tag:yaml.org,2002:str', {
   construct: function (data) { return data !== null ? data : ''; }
 });
 
-},{"../type":13}],29:[function(require,module,exports){
+},{"../type":13}],28:[function(require,module,exports){
 'use strict';
 
 var Type = require('../type');
